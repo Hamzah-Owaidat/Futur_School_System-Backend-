@@ -112,6 +112,46 @@ exports.getEmployeeById = asyncHandler(async (req, res, next) => {
 });
 
 /**
+ * @desc    Generate unique employee code
+ * @returns {Promise<string>} Generated employee code
+ */
+const generateEmployeeCode = async () => {
+  // Find the highest existing employee code number
+  const result = await query(
+    `SELECT employee_code 
+     FROM employees 
+     WHERE employee_code LIKE 'EMP%' 
+     ORDER BY CAST(SUBSTRING(employee_code, 4) AS UNSIGNED) DESC 
+     LIMIT 1`
+  );
+
+  let nextNumber = 1;
+
+  if (result.length > 0) {
+    const lastCode = result[0].employee_code;
+    // Extract number from code (e.g., "EMP001" -> 1)
+    const lastNumber = parseInt(lastCode.substring(3)) || 0;
+    nextNumber = lastNumber + 1;
+  }
+
+  // Format as EMP001, EMP002, etc. (3 digits minimum)
+  const employeeCode = `EMP${String(nextNumber).padStart(3, '0')}`;
+
+  // Double-check uniqueness (handle edge cases)
+  const exists = await query(
+    'SELECT id FROM employees WHERE employee_code = ?',
+    [employeeCode]
+  );
+
+  if (exists.length > 0) {
+    // If somehow it exists, try next number
+    return generateEmployeeCode();
+  }
+
+  return employeeCode;
+};
+
+/**
  * @desc    Create new employee
  * @route   POST /api/employees
  * @access  Private (Admin)
@@ -132,15 +172,21 @@ exports.createEmployee = asyncHandler(async (req, res, next) => {
     role_id
   } = req.body;
 
-  // Validate required fields
-  if (!employee_code || !first_name || !last_name || !email || !hire_date || !role_id) {
+  // Validate required fields (employee_code is now optional)
+  if (!first_name || !last_name || !email || !hire_date || !role_id) {
     return sendErrorResponse(res, 400, 'Please provide all required fields');
+  }
+
+  // Generate employee code if not provided
+  let finalEmployeeCode = employee_code;
+  if (!finalEmployeeCode) {
+    finalEmployeeCode = await generateEmployeeCode();
   }
 
   // Check if employee_code or email already exists
   const existing = await query(
     'SELECT id FROM employees WHERE employee_code = ? OR email = ?',
-    [employee_code, email]
+    [finalEmployeeCode, email]
   );
 
   if (existing.length > 0) {
@@ -160,7 +206,7 @@ exports.createEmployee = asyncHandler(async (req, res, next) => {
       gender, address, hire_date, salary, role_id, created_by, updated_by)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      employee_code,
+      finalEmployeeCode,
       first_name,
       last_name,
       email,
