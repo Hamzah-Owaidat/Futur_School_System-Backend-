@@ -91,6 +91,18 @@ exports.createRole = asyncHandler(async (req, res, next) => {
 
   // Assign permissions if provided
   if (permission_ids && Array.isArray(permission_ids) && permission_ids.length > 0) {
+    // Validate all permission IDs exist
+    const placeholders = permission_ids.map(() => '?').join(',');
+    const existingPermissions = await query(
+      `SELECT id FROM permissions WHERE id IN (${placeholders})`,
+      permission_ids
+    );
+    
+    if (existingPermissions.length !== permission_ids.length) {
+      return sendErrorResponse(res, 400, 'One or more permission IDs are invalid');
+    }
+    
+    // Insert permissions
     for (const permissionId of permission_ids) {
       await query(
         `INSERT INTO role_permissions (role_id, permission_id, created_by, updated_by)
@@ -163,6 +175,18 @@ exports.updateRole = asyncHandler(async (req, res, next) => {
 
     // Add new permissions
     if (permission_ids.length > 0) {
+      // Validate all permission IDs exist
+      const placeholders = permission_ids.map(() => '?').join(',');
+      const existingPermissions = await query(
+        `SELECT id FROM permissions WHERE id IN (${placeholders})`,
+        permission_ids
+      );
+      
+      if (existingPermissions.length !== permission_ids.length) {
+        return sendErrorResponse(res, 400, 'One or more permission IDs are invalid');
+      }
+      
+      // Insert permissions
       for (const permissionId of permission_ids) {
         await query(
           `INSERT INTO role_permissions (role_id, permission_id, created_by, updated_by)

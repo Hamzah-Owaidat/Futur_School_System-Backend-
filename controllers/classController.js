@@ -152,6 +152,22 @@ exports.createClass = asyncHandler(async (req, res, next) => {
     return sendErrorResponse(res, 400, 'Class name or code already exists');
   }
 
+  // Validate teacher if provided
+  if (teacher_id) {
+    const teacher = await query(
+      'SELECT id, is_active FROM employees WHERE id = ? AND is_active = TRUE',
+      [teacher_id]
+    );
+    if (teacher.length === 0) {
+      return sendErrorResponse(res, 400, 'Teacher not found or inactive');
+    }
+  }
+
+  // Validate capacity is positive
+  if (capacity !== undefined && capacity !== null && (isNaN(capacity) || capacity < 1)) {
+    return sendErrorResponse(res, 400, 'Capacity must be a positive number');
+  }
+
   // Insert class
   const result = await query(
     `INSERT INTO classes 
@@ -215,12 +231,28 @@ exports.updateClass = asyncHandler(async (req, res, next) => {
 
   // Check if class_name or class_code already exists (excluding current class)
   if (class_name || class_code) {
-    const duplicate = await query(
-      'SELECT id FROM classes WHERE (class_name = ? OR class_code = ?) AND id != ?',
-      [class_name || '', class_code || '', id]
-    );
-    if (duplicate.length > 0) {
-      return sendErrorResponse(res, 400, 'Class name or code already exists');
+    const conditions = [];
+    const checkParams = [];
+    
+    if (class_name) {
+      conditions.push('class_name = ?');
+      checkParams.push(class_name);
+    }
+    
+    if (class_code) {
+      conditions.push('class_code = ?');
+      checkParams.push(class_code);
+    }
+    
+    if (conditions.length > 0) {
+      checkParams.push(id);
+      const duplicate = await query(
+        `SELECT id FROM classes WHERE (${conditions.join(' OR ')}) AND id != ?`,
+        checkParams
+      );
+      if (duplicate.length > 0) {
+        return sendErrorResponse(res, 400, 'Class name or code already exists');
+      }
     }
   }
 
@@ -241,6 +273,11 @@ exports.updateClass = asyncHandler(async (req, res, next) => {
   updates.push('updated_by = ?');
   params.push(req.employee.id);
   params.push(id);
+
+  // Check if there are any updates (besides updated_by)
+  if (updates.length <= 1) {
+    return sendErrorResponse(res, 400, 'No fields to update');
+  }
 
   await query(`UPDATE classes SET ${updates.join(', ')} WHERE id = ?`, params);
 

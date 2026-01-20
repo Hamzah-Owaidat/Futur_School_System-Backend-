@@ -144,8 +144,29 @@ const generateEmployeeCode = async () => {
   );
 
   if (exists.length > 0) {
-    // If somehow it exists, try next number
-    return generateEmployeeCode();
+    // If somehow it exists, try next number (with max retry to prevent infinite loop)
+    const maxRetries = 100;
+    let retries = 0;
+    let newCode = employeeCode;
+    
+    while (retries < maxRetries) {
+      const nextNumber = parseInt(newCode.substring(3)) + 1;
+      newCode = `EMP${String(nextNumber).padStart(3, '0')}`;
+      
+      const checkExists = await query(
+        'SELECT id FROM employees WHERE employee_code = ?',
+        [newCode]
+      );
+      
+      if (checkExists.length === 0) {
+        return newCode;
+      }
+      
+      retries++;
+    }
+    
+    // If we've exhausted retries, throw error
+    throw new Error('Unable to generate unique employee code after maximum retries');
   }
 
   return employeeCode;
@@ -269,12 +290,28 @@ exports.updateEmployee = asyncHandler(async (req, res, next) => {
 
   // Check if employee_code or email already exists (excluding current employee)
   if (employee_code || email) {
-    const duplicate = await query(
-      'SELECT id FROM employees WHERE (employee_code = ? OR email = ?) AND id != ?',
-      [employee_code || '', email || '', id]
-    );
-    if (duplicate.length > 0) {
-      return sendErrorResponse(res, 400, 'Employee code or email already exists');
+    const conditions = [];
+    const checkParams = [];
+    
+    if (employee_code) {
+      conditions.push('employee_code = ?');
+      checkParams.push(employee_code);
+    }
+    
+    if (email) {
+      conditions.push('email = ?');
+      checkParams.push(email);
+    }
+    
+    if (conditions.length > 0) {
+      checkParams.push(id);
+      const duplicate = await query(
+        `SELECT id FROM employees WHERE (${conditions.join(' OR ')}) AND id != ?`,
+        checkParams
+      );
+      if (duplicate.length > 0) {
+        return sendErrorResponse(res, 400, 'Employee code or email already exists');
+      }
     }
   }
 
@@ -305,6 +342,11 @@ exports.updateEmployee = asyncHandler(async (req, res, next) => {
   updates.push('updated_by = ?');
   params.push(req.employee.id);
   params.push(id);
+
+  // Check if there are any updates (besides updated_by)
+  if (updates.length <= 1) {
+    return sendErrorResponse(res, 400, 'No fields to update');
+  }
 
   await query(
     `UPDATE employees SET ${updates.join(', ')} WHERE id = ?`,

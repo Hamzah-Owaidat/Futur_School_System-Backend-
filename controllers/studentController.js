@@ -134,9 +134,17 @@ exports.createStudent = asyncHandler(async (req, res, next) => {
   }
 
   // Check if student_code or email already exists
+  const checkConditions = ['student_code = ?'];
+  const checkParams = [student_code];
+  
+  if (email) {
+    checkConditions.push('email = ?');
+    checkParams.push(email);
+  }
+  
   const existing = await query(
-    'SELECT id FROM students WHERE student_code = ? OR email = ?',
-    [student_code, email || '']
+    `SELECT id FROM students WHERE ${checkConditions.join(' OR ')}`,
+    checkParams
   );
 
   if (existing.length > 0) {
@@ -215,12 +223,28 @@ exports.updateStudent = asyncHandler(async (req, res, next) => {
 
   // Check if student_code or email already exists (excluding current student)
   if (student_code || email) {
-    const duplicate = await query(
-      'SELECT id FROM students WHERE (student_code = ? OR email = ?) AND id != ?',
-      [student_code || '', email || '', id]
-    );
-    if (duplicate.length > 0) {
-      return sendErrorResponse(res, 400, 'Student code or email already exists');
+    const conditions = [];
+    const checkParams = [];
+    
+    if (student_code) {
+      conditions.push('student_code = ?');
+      checkParams.push(student_code);
+    }
+    
+    if (email) {
+      conditions.push('email = ?');
+      checkParams.push(email);
+    }
+    
+    if (conditions.length > 0) {
+      checkParams.push(id);
+      const duplicate = await query(
+        `SELECT id FROM students WHERE (${conditions.join(' OR ')}) AND id != ?`,
+        checkParams
+      );
+      if (duplicate.length > 0) {
+        return sendErrorResponse(res, 400, 'Student code or email already exists');
+      }
     }
   }
 
@@ -246,6 +270,11 @@ exports.updateStudent = asyncHandler(async (req, res, next) => {
   updates.push('updated_by = ?');
   params.push(req.employee.id);
   params.push(id);
+
+  // Check if there are any updates (besides updated_by)
+  if (updates.length <= 1) {
+    return sendErrorResponse(res, 400, 'No fields to update');
+  }
 
   await query(`UPDATE students SET ${updates.join(', ')} WHERE id = ?`, params);
 

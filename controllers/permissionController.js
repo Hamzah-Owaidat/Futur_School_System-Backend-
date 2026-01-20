@@ -202,8 +202,7 @@ exports.deletePermission = asyncHandler(async (req, res, next) => {
     return sendErrorResponse(res, 400, 'Cannot delete permission. It is assigned to roles.');
   }
 
-  // Delete permission (CASCADE should handle role_permissions, but being explicit)
-  await query('DELETE FROM role_permissions WHERE permission_id = ?', [id]);
+  // Delete permission (CASCADE should handle role_permissions automatically)
   await query('DELETE FROM permissions WHERE id = ?', [id]);
 
   sendSuccessResponse(res, 200, null, 'Permission deleted successfully');
