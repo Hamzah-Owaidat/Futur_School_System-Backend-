@@ -172,6 +172,87 @@ CREATE TABLE IF NOT EXISTS notes (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
+-- 8. COURSES TABLE
+-- ============================================
+CREATE TABLE IF NOT EXISTS courses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    code VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by INT,
+    updated_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_course_name (name),
+    INDEX idx_course_code (code),
+    INDEX idx_course_is_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- 9. CLASS_COURSES TABLE (Course assignments per class & teacher)
+-- ============================================
+CREATE TABLE IF NOT EXISTS class_courses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    class_id INT NOT NULL,
+    course_id INT NOT NULL,
+    teacher_id INT NOT NULL COMMENT 'Main teacher for this course in this class',
+    academic_year VARCHAR(20) NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    created_by INT,
+    updated_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+    FOREIGN KEY (teacher_id) REFERENCES employees(id) ON DELETE RESTRICT,
+    UNIQUE KEY unique_class_course_teacher (class_id, course_id, academic_year),
+    INDEX idx_class_courses_class (class_id),
+    INDEX idx_class_courses_course (course_id),
+    INDEX idx_class_courses_teacher (teacher_id),
+    INDEX idx_class_courses_year (academic_year),
+    INDEX idx_class_courses_active (is_active)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
+-- 10. COURSE_NOTES TABLE (Per student, per course, per semester)
+-- ============================================
+CREATE TABLE IF NOT EXISTS course_notes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT NOT NULL,
+    class_id INT NOT NULL,
+    course_id INT NOT NULL,
+    teacher_id INT NOT NULL,
+    academic_year VARCHAR(20) NOT NULL,
+    semester TINYINT NOT NULL COMMENT '1, 2, or 3',
+    -- Scores for each assessment in the semester
+    partial1_score DECIMAL(5,2) DEFAULT 0,
+    partial2_score DECIMAL(5,2) DEFAULT 0,
+    final_score DECIMAL(5,2) DEFAULT 0,
+    -- Totals (max points) for each assessment
+    partial1_total DECIMAL(5,2) DEFAULT 0,
+    partial2_total DECIMAL(5,2) DEFAULT 0,
+    final_total DECIMAL(5,2) DEFAULT 0,
+    -- Computed semester total (can be updated by app logic)
+    semester_total DECIMAL(5,2) DEFAULT 0,
+    comment TEXT,
+    created_by INT,
+    updated_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+    FOREIGN KEY (class_id) REFERENCES classes(id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+    FOREIGN KEY (teacher_id) REFERENCES employees(id) ON DELETE RESTRICT,
+    UNIQUE KEY unique_student_course_semester (student_id, class_id, course_id, academic_year, semester),
+    INDEX idx_course_notes_student (student_id),
+    INDEX idx_course_notes_class (class_id),
+    INDEX idx_course_notes_course (course_id),
+    INDEX idx_course_notes_teacher (teacher_id),
+    INDEX idx_course_notes_year_sem (academic_year, semester)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ============================================
 -- ADD FOREIGN KEY CONSTRAINTS FOR created_by/updated_by
 -- (Optional: If you want to track which user created/updated records)
 -- ============================================
@@ -191,4 +272,10 @@ ALTER TABLE students ADD FOREIGN KEY (created_by) REFERENCES employees(id) ON DE
 ALTER TABLE students ADD FOREIGN KEY (updated_by) REFERENCES employees(id) ON DELETE SET NULL;
 ALTER TABLE notes ADD FOREIGN KEY (created_by) REFERENCES employees(id) ON DELETE SET NULL;
 ALTER TABLE notes ADD FOREIGN KEY (updated_by) REFERENCES employees(id) ON DELETE SET NULL;
+ALTER TABLE courses ADD FOREIGN KEY (created_by) REFERENCES employees(id) ON DELETE SET NULL;
+ALTER TABLE courses ADD FOREIGN KEY (updated_by) REFERENCES employees(id) ON DELETE SET NULL;
+ALTER TABLE class_courses ADD FOREIGN KEY (created_by) REFERENCES employees(id) ON DELETE SET NULL;
+ALTER TABLE class_courses ADD FOREIGN KEY (updated_by) REFERENCES employees(id) ON DELETE SET NULL;
+ALTER TABLE course_notes ADD FOREIGN KEY (created_by) REFERENCES employees(id) ON DELETE SET NULL;
+ALTER TABLE course_notes ADD FOREIGN KEY (updated_by) REFERENCES employees(id) ON DELETE SET NULL;
 

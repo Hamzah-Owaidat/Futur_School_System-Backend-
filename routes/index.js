@@ -8,6 +8,9 @@ const classRoutes = require('./class.routes');
 const studentRoutes = require('./student.routes');
 const roleRoutes = require('./role.routes');
 const permissionRoutes = require('./permission.routes');
+const courseRoutes = require('./course.routes');
+const classCourseRoutes = require('./classCourse.routes');
+const courseNoteRoutes = require('./courseNote.routes');
 
 // API welcome route
 router.get('/', (req, res) => {
@@ -21,7 +24,10 @@ router.get('/', (req, res) => {
       classes: '/api/classes',
       students: '/api/students',
       roles: '/api/roles',
-      permissions: '/api/permissions'
+      permissions: '/api/permissions',
+      courses: '/api/courses',
+      classCourses: '/api/class-courses',
+      courseNotes: '/api/course-notes'
     }
   });
 });
@@ -33,6 +39,9 @@ router.use('/classes', classRoutes);
 router.use('/students', studentRoutes);
 router.use('/roles', roleRoutes);
 router.use('/permissions', permissionRoutes);
+router.use('/courses', courseRoutes);
+router.use('/class-courses', classCourseRoutes);
+router.use('/course-notes', courseNoteRoutes);
 
 module.exports = router;
 
