@@ -9,7 +9,7 @@ require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const { query } = require('../config/database');
 
-const DEFAULT_PASSWORD = 'password123'; // Change this in production!
+const DEFAULT_PASSWORD = 'password1234'; // Change this in production!
 
 async function setupPasswords() {
   try {

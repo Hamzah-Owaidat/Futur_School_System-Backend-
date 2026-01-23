@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS employees (
     password VARCHAR(255) NULL,
     phone VARCHAR(20),
     date_of_birth DATE,
-    gender ENUM('male', 'female', 'other') DEFAULT 'other',
+    gender ENUM('male', 'female') DEFAULT 'male',
     address TEXT,
     hire_date DATE NOT NULL,
     salary DECIMAL(10, 2),
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS students (
     email VARCHAR(100) UNIQUE,
     phone VARCHAR(20),
     date_of_birth DATE NOT NULL,
-    gender ENUM('male', 'female', 'other') DEFAULT 'other',
+    gender ENUM('male', 'female') DEFAULT 'male',
     address TEXT,
     parent_name VARCHAR(200),
     parent_phone VARCHAR(20),
@@ -146,33 +146,7 @@ CREATE TABLE IF NOT EXISTS students (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
--- 7. NOTES TABLE
--- ============================================
-CREATE TABLE IF NOT EXISTS notes (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    student_id INT NOT NULL,
-    employee_id INT NOT NULL,
-    title VARCHAR(200) NOT NULL,
-    content TEXT NOT NULL,
-    note_type ENUM('academic', 'behavioral', 'attendance', 'general') DEFAULT 'general',
-    priority ENUM('low', 'medium', 'high') DEFAULT 'medium',
-    is_visible_to_parent BOOLEAN DEFAULT FALSE,
-    created_by INT,
-    updated_by INT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-    FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE RESTRICT,
-    INDEX idx_student_id (student_id),
-    INDEX idx_employee_id (employee_id),
-    INDEX idx_note_type (note_type),
-    INDEX idx_priority (priority),
-    INDEX idx_created_at (created_at),
-    INDEX idx_student_created (student_id, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- ============================================
--- 8. COURSES TABLE
+-- 7. COURSES TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS courses (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -190,7 +164,7 @@ CREATE TABLE IF NOT EXISTS courses (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
--- 9. CLASS_COURSES TABLE (Course assignments per class & teacher)
+-- 8. CLASS_COURSES TABLE (Course assignments per class & teacher)
 -- ============================================
 CREATE TABLE IF NOT EXISTS class_courses (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -215,7 +189,7 @@ CREATE TABLE IF NOT EXISTS class_courses (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ============================================
--- 10. COURSE_NOTES TABLE (Per student, per course, per semester)
+-- 9. COURSE_NOTES TABLE (Per student, per course, per semester)
 -- ============================================
 CREATE TABLE IF NOT EXISTS course_notes (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -270,12 +244,9 @@ ALTER TABLE classes ADD FOREIGN KEY (created_by) REFERENCES employees(id) ON DEL
 ALTER TABLE classes ADD FOREIGN KEY (updated_by) REFERENCES employees(id) ON DELETE SET NULL;
 ALTER TABLE students ADD FOREIGN KEY (created_by) REFERENCES employees(id) ON DELETE SET NULL;
 ALTER TABLE students ADD FOREIGN KEY (updated_by) REFERENCES employees(id) ON DELETE SET NULL;
-ALTER TABLE notes ADD FOREIGN KEY (created_by) REFERENCES employees(id) ON DELETE SET NULL;
-ALTER TABLE notes ADD FOREIGN KEY (updated_by) REFERENCES employees(id) ON DELETE SET NULL;
 ALTER TABLE courses ADD FOREIGN KEY (created_by) REFERENCES employees(id) ON DELETE SET NULL;
 ALTER TABLE courses ADD FOREIGN KEY (updated_by) REFERENCES employees(id) ON DELETE SET NULL;
 ALTER TABLE class_courses ADD FOREIGN KEY (created_by) REFERENCES employees(id) ON DELETE SET NULL;
 ALTER TABLE class_courses ADD FOREIGN KEY (updated_by) REFERENCES employees(id) ON DELETE SET NULL;
 ALTER TABLE course_notes ADD FOREIGN KEY (created_by) REFERENCES employees(id) ON DELETE SET NULL;
 ALTER TABLE course_notes ADD FOREIGN KEY (updated_by) REFERENCES employees(id) ON DELETE SET NULL;
-
