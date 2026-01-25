@@ -7,7 +7,7 @@ const { asyncHandler, sendSuccessResponse, sendErrorResponse } = require('../uti
  * @access  Private (Admin, Principal, Teacher)
  */
 exports.getAllCourses = asyncHandler(async (req, res, next) => {
-  const { is_active = '' } = req.query;
+  const { is_active = '', show_all = '' } = req.query;
 
   let sql = `
     SELECT *
@@ -15,6 +15,11 @@ exports.getAllCourses = asyncHandler(async (req, res, next) => {
     WHERE 1=1
   `;
   const params = [];
+
+  // Filter by deleted_at: show only non-deleted records by default
+  if (show_all !== 'true') {
+    sql += ` AND deleted_at IS NULL`;
+  }
 
   if (is_active !== '') {
     sql += ` AND is_active = ?`;
@@ -90,9 +95,13 @@ exports.updateCourse = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const { name, code, description, is_active } = req.body;
 
-  const existing = await query('SELECT id FROM courses WHERE id = ?', [id]);
+  // Check if course exists and is not soft deleted
+  const existing = await query('SELECT id, deleted_at FROM courses WHERE id = ?', [id]);
   if (existing.length === 0) {
     return sendErrorResponse(res, 404, 'Course not found');
+  }
+  if (existing[0].deleted_at !== null) {
+    return sendErrorResponse(res, 403, 'Cannot update a deleted course');
   }
 
   // Check for duplicate code
@@ -151,8 +160,9 @@ exports.deleteCourse = asyncHandler(async (req, res, next) => {
     return sendErrorResponse(res, 404, 'Course not found');
   }
 
+  // Soft delete (set is_active to false and deleted_at timestamp)
   await query(
-    'UPDATE courses SET is_active = FALSE, updated_by = ? WHERE id = ?',
+    'UPDATE courses SET is_active = FALSE, deleted_at = NOW(), updated_by = ? WHERE id = ?',
     [req.employee.id, id]
   );
 

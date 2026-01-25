@@ -7,7 +7,7 @@ const { asyncHandler, sendSuccessResponse, sendErrorResponse } = require('../uti
  * @access  Private
  */
 exports.getAllClasses = asyncHandler(async (req, res, next) => {
-  const { page = 1, limit = 10, search = '', grade_level = '', academic_year = '', is_active = '' } = req.query;
+  const { page = 1, limit = 10, search = '', grade_level = '', academic_year = '', is_active = '', show_all = '' } = req.query;
   
   // Ensure proper integer conversion
   const pageNum = parseInt(page) || 1;
@@ -26,6 +26,11 @@ exports.getAllClasses = asyncHandler(async (req, res, next) => {
     WHERE 1=1
   `;
   const params = [];
+
+  // Filter by deleted_at: show only non-deleted records by default
+  if (show_all !== 'true') {
+    sql += ` AND c.deleted_at IS NULL`;
+  }
 
   if (search) {
     sql += ` AND (c.class_name LIKE ? OR c.class_code LIKE ? OR c.room_number LIKE ?)`;
@@ -56,6 +61,11 @@ exports.getAllClasses = asyncHandler(async (req, res, next) => {
   // Get total count
   let countSql = `SELECT COUNT(*) as total FROM classes WHERE 1=1`;
   const countParams = [];
+
+  // Apply same deleted_at filter to count query
+  if (show_all !== 'true') {
+    countSql += ` AND deleted_at IS NULL`;
+  }
 
   if (search) {
     countSql += ` AND (class_name LIKE ? OR class_code LIKE ? OR room_number LIKE ?)`;
@@ -223,10 +233,13 @@ exports.updateClass = asyncHandler(async (req, res, next) => {
     is_active
   } = req.body;
 
-  // Check if class exists
-  const existing = await query('SELECT id FROM classes WHERE id = ?', [id]);
+  // Check if class exists and is not soft deleted
+  const existing = await query('SELECT id, deleted_at FROM classes WHERE id = ?', [id]);
   if (existing.length === 0) {
     return sendErrorResponse(res, 404, 'Class not found');
+  }
+  if (existing[0].deleted_at !== null) {
+    return sendErrorResponse(res, 403, 'Cannot update a deleted class');
   }
 
   // Check if class_name or class_code already exists (excluding current class)
@@ -311,9 +324,9 @@ exports.deleteClass = asyncHandler(async (req, res, next) => {
     return sendErrorResponse(res, 404, 'Class not found');
   }
 
-  // Soft delete
+  // Soft delete (set is_active to false and deleted_at timestamp)
   await query(
-    'UPDATE classes SET is_active = FALSE, updated_by = ? WHERE id = ?',
+    'UPDATE classes SET is_active = FALSE, deleted_at = NOW(), updated_by = ? WHERE id = ?',
     [req.employee.id, id]
   );
 

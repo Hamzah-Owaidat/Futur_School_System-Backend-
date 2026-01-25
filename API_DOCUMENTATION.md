@@ -1,366 +1,415 @@
 # FuturSchool System API Documentation
 
-Complete API documentation for the dashboard endpoints.
+**Base URL:** `http://localhost:8080/api` (or your backend URL)
 
-## Base URL
-```
-http://localhost:3000/api
-```
-
-## Authentication
-
-Most endpoints require authentication. Include the JWT token in the Authorization header:
-
-```
-Authorization: Bearer <your-token>
-```
+**Authentication:** JWT Token in `Authorization` header: `Bearer <token>`
 
 ---
 
-## 📋 Dashboard Endpoints
+## 🔐 Authentication
 
-### 1. Employees
+### Login
+```http
+POST /api/auth/login
+Content-Type: application/json
 
-#### Get All Employees
+{
+  "email": "admin@futurschool.com",
+  "password": "password123"
+}
 ```
-GET /api/employees
-```
-**Access:** Admin, Principal  
-**Query Parameters:**
-- `page` - Page number (default: 1)
-- `limit` - Items per page (default: 10)
-- `search` - Search by name, email, or employee code
-- `role_id` - Filter by role ID
-- `is_active` - Filter by active status (true/false)
 
 **Response:**
 ```json
 {
   "success": true,
-  "message": "Employees retrieved successfully",
   "data": {
-    "employees": [...],
-    "pagination": {
-      "page": 1,
-      "limit": 10,
-      "total": 50,
-      "pages": 5
-    }
+    "token": "eyJhbGciOiJIUzI1NiIs...",
+    "employee": { "id": 1, "email": "...", "role": "admin" }
   }
 }
 ```
 
-#### Get Employee by ID
-```
-GET /api/employees/:id
-```
-**Access:** Authenticated users
-
-#### Create Employee
-```
-POST /api/employees
-```
-**Access:** Admin  
-**Body:**
-```json
-{
-  "employee_code": "EMP006",
-  "first_name": "John",
-  "last_name": "Doe",
-  "email": "john.doe@futurschool.com",
-  "password": "password123",
-  "phone": "123-456-7890",
-  "date_of_birth": "1990-01-01",
-  "gender": "male",
-  "address": "123 Main St",
-  "hire_date": "2024-01-01",
-  "salary": 50000.00,
-  "role_id": 2
-}
-```
-
-#### Update Employee
-```
-PUT /api/employees/:id
-```
-**Access:** Admin  
-**Body:** (All fields optional except those you want to update)
-
-#### Delete Employee
-```
-DELETE /api/employees/:id
-```
-**Access:** Admin  
-**Note:** Soft delete (sets is_active to false)
-
----
-
-### 2. Classes
-
-#### Get All Classes
-```
-GET /api/classes
-```
-**Access:** Authenticated users  
-**Query Parameters:**
-- `page`, `limit`, `search` - Pagination and search
-- `grade_level` - Filter by grade level
-- `academic_year` - Filter by academic year
-- `is_active` - Filter by active status
-
-**Response includes:** Teacher info, student count
-
-#### Get Class by ID
-```
-GET /api/classes/:id
-```
-**Access:** Authenticated users
-
-#### Create Class
-```
-POST /api/classes
-```
-**Access:** Admin  
-**Body:**
-```json
-{
-  "class_name": "Grade 4-A",
-  "class_code": "G4A",
-  "grade_level": 4,
-  "section": "A",
-  "capacity": 30,
-  "room_number": "401",
-  "academic_year": "2024-2025",
-  "teacher_id": 2
-}
-```
-
-#### Update Class
-```
-PUT /api/classes/:id
-```
-**Access:** Admin
-
-#### Delete Class
-```
-DELETE /api/classes/:id
-```
-**Access:** Admin
-
----
-
-### 3. Students
-
-#### Get All Students
-```
-GET /api/students
-```
-**Access:** Authenticated users  
-**Query Parameters:**
-- `page`, `limit`, `search` - Pagination and search
-- `class_id` - Filter by class
-- `is_active` - Filter by active status
-
-**Response includes:** Class info
-
-#### Get Student by ID
-```
-GET /api/students/:id
-```
-**Access:** Authenticated users
-
-#### Create Student
-```
-POST /api/students
-```
-**Access:** Admin  
-**Body:**
-```json
-{
-  "student_code": "STU006",
-  "first_name": "Jane",
-  "last_name": "Smith",
-  "email": "jane.smith@student.futurschool.com",
-  "phone": "111-222-3333",
-  "date_of_birth": "2015-05-15",
-  "gender": "female",
-  "address": "456 Student St",
-  "parent_name": "John Smith",
-  "parent_phone": "111-222-3334",
-  "parent_email": "john.smith@email.com",
-  "enrollment_date": "2024-09-01",
-  "class_id": 1
-}
-```
-
-#### Update Student
-```
-PUT /api/students/:id
-```
-**Access:** Admin
-
-#### Delete Student
-```
-DELETE /api/students/:id
-```
-**Access:** Admin
-
----
-
-### 4. Roles
-
-#### Get All Roles
-```
-GET /api/roles
-```
-**Access:** Admin  
-**Response includes:** Employee count, permission count
-
-#### Get Role by ID
-```
-GET /api/roles/:id
-```
-**Access:** Admin  
-**Response includes:** All permissions assigned to the role
-
-#### Create Role
-```
-POST /api/roles
-```
-**Access:** Admin  
-**Body:**
-```json
-{
-  "name": "coordinator",
-  "description": "Academic Coordinator",
-  "is_active": true,
-  "permission_ids": [1, 2, 3, 5]
-}
-```
-
-#### Update Role
-```
-PUT /api/roles/:id
-```
-**Access:** Admin  
-**Body:** Can update name, description, is_active, and permission_ids
-
-#### Delete Role
-```
-DELETE /api/roles/:id
-```
-**Access:** Admin  
-**Note:** Cannot delete if assigned to active employees
-
----
-
-### 5. Permissions
-
-#### Get All Permissions
-```
-GET /api/permissions
-```
-**Access:** Admin  
-**Query Parameters:**
-- `resource` - Filter by resource (student, employee, etc.)
-- `action` - Filter by action (create, read, update, delete)
-
-#### Get Grouped Permissions
-```
-GET /api/permissions/grouped
-```
-**Access:** Admin  
-**Response:** Permissions grouped by resource
-
-#### Get Permission by ID
-```
-GET /api/permissions/:id
-```
-**Access:** Admin  
-**Response includes:** All roles that have this permission
-
-#### Create Permission
-```
-POST /api/permissions
-```
-**Access:** Admin  
-**Body:**
-```json
-{
-  "name": "view_reports",
-  "resource": "report",
-  "action": "read",
-  "description": "View system reports"
-}
-```
-
-#### Update Permission
-```
-PUT /api/permissions/:id
-```
-**Access:** Admin
-
-#### Delete Permission
-```
-DELETE /api/permissions/:id
-```
-**Access:** Admin  
-**Note:** Cannot delete if assigned to roles
-
----
-
-## 🔐 Authentication Endpoints
-
-### Login
-```
-POST /api/auth/login
-```
-**Body:**
-```json
-{
-  "email": "john.smith@futurschool.com",
-  "password": "password123"
-}
-```
-
 ### Get Current User
-```
+```http
 GET /api/auth/me
+Authorization: Bearer <token>
 ```
-**Access:** Authenticated users
 
 ### Logout
-```
+```http
 POST /api/auth/logout
+Authorization: Bearer <token>
 ```
-**Access:** Authenticated users
 
 ---
 
-## 📊 Common Features
+## 👥 Employees
 
-### Pagination
-All list endpoints support pagination:
-- `page` - Page number (starts at 1)
-- `limit` - Items per page
+**Access:** Admin, Principal (GET), Admin only (POST/PUT/DELETE)
 
-### Search
-Most list endpoints support search:
-- `search` - Searches relevant fields (names, codes, emails)
+### List Employees
+```http
+GET /api/employees?page=1&limit=10&search=john&role_id=2&is_active=true
+```
 
-### Filtering
-Endpoints support various filters:
-- `is_active` - Filter by active status
-- Resource-specific filters (role_id, class_id, etc.)
+### Get Employee
+```http
+GET /api/employees/:id
+```
+
+### Create Employee
+```http
+POST /api/employees
+{
+  "first_name": "John",
+  "last_name": "Doe",
+  "email": "john@example.com",
+  "password": "password123",
+  "role_id": 2,
+  "hire_date": "2024-01-15",
+  "phone": "123-456-7890"
+}
+```
+*Note: `employee_code` is auto-generated if not provided*
+
+### Update Employee
+```http
+PUT /api/employees/:id
+{
+  "first_name": "Jane",
+  "is_active": false
+}
+```
+
+### Delete Employee (Soft Delete)
+```http
+DELETE /api/employees/:id
+```
+
+---
+
+## 🏫 Classes
+
+**Access:** All authenticated (GET), Admin only (POST/PUT/DELETE)
+
+### List Classes
+```http
+GET /api/classes?page=1&limit=10&teacher_id=2&active_only=true&show_all=false
+```
+
+### Get Class
+```http
+GET /api/classes/:id
+```
+
+### Create Class
+```http
+POST /api/classes
+{
+  "class_name": "Grade 1 - Section A",
+  "class_code": "G1A",
+  "grade_level": 1,
+  "section": "A",
+  "capacity": 30,
+  "teacher_id": 2,
+  "academic_year": "2024-2025"
+}
+```
+
+### Update Class
+```http
+PUT /api/classes/:id
+```
+
+### Delete Class (Soft Delete)
+```http
+DELETE /api/classes/:id
+```
+
+---
+
+## 🎓 Students
+
+**Access:** All authenticated (GET), Admin only (POST/PUT/DELETE)
+
+### List Students
+```http
+GET /api/students?page=1&limit=10&search=john&class_id=1&is_active=true&show_all=false
+```
+
+### Get Student
+```http
+GET /api/students/:id
+```
+
+### Create Student
+```http
+POST /api/students
+{
+  "student_code": "STU001",
+  "first_name": "Alice",
+  "last_name": "Smith",
+  "email": "alice@example.com",
+  "date_of_birth": "2010-05-15",
+  "enrollment_date": "2024-09-01",
+  "class_id": 1,
+  "parent_name": "John Smith",
+  "parent_phone": "123-456-7890"
+}
+```
+
+### Update Student
+```http
+PUT /api/students/:id
+```
+
+### Delete Student (Soft Delete)
+```http
+DELETE /api/students/:id
+```
+
+---
+
+## 🔑 Roles
+
+**Access:** Admin only
+
+### List Roles
+```http
+GET /api/roles?active_only=true&show_all=false
+```
+
+### Get Role
+```http
+GET /api/roles/:id
+```
+
+### Create Role
+```http
+POST /api/roles
+{
+  "name": "teacher",
+  "description": "Teacher role",
+  "permission_ids": [1, 2, 3]
+}
+```
+
+### Update Role
+```http
+PUT /api/roles/:id
+{
+  "name": "teacher",
+  "is_active": true,
+  "permission_ids": [1, 2, 3, 4]
+}
+```
+
+### Delete Role (Soft Delete)
+```http
+DELETE /api/roles/:id
+```
+
+---
+
+## 🔐 Permissions
+
+**Access:** Admin only
+
+### List Permissions
+```http
+GET /api/permissions
+```
+
+### Get Grouped Permissions
+```http
+GET /api/permissions/grouped
+```
+
+### Get Permission
+```http
+GET /api/permissions/:id
+```
+
+### Create Permission
+```http
+POST /api/permissions
+{
+  "name": "manage_students",
+  "resource": "students",
+  "action": "manage"
+}
+```
+
+### Update Permission
+```http
+PUT /api/permissions/:id
+```
+
+### Delete Permission
+```http
+DELETE /api/permissions/:id
+```
+
+---
+
+## 📚 Courses
+
+**Access:** All authenticated (GET), Admin only (POST/PUT/DELETE)
+
+### List Courses
+```http
+GET /api/courses?active_only=true&show_all=false
+```
+
+### Get Course
+```http
+GET /api/courses/:id
+```
+
+### Create Course
+```http
+POST /api/courses
+{
+  "name": "Mathematics",
+  "code": "MATH101",
+  "description": "Basic mathematics course"
+}
+```
+
+### Update Course
+```http
+PUT /api/courses/:id
+```
+
+### Delete Course (Soft Delete)
+```http
+DELETE /api/courses/:id
+```
+
+---
+
+## 📖 Class-Course Assignments
+
+**Access:** All authenticated (GET), Admin only (POST/PUT/DELETE)
+
+### List Assignments
+```http
+GET /api/class-courses?class_id=1&course_id=2&teacher_id=3&academic_year=2024-2025
+```
+
+### Get Assignment
+```http
+GET /api/class-courses/:id
+```
+
+### Create Assignment
+```http
+POST /api/class-courses
+{
+  "class_id": 1,
+  "course_id": 2,
+  "teacher_id": 3,
+  "academic_year": "2024-2025"
+}
+```
+
+### Update Assignment
+```http
+PUT /api/class-courses/:id
+{
+  "teacher_id": 4,
+  "academic_year": "2024-2025"
+}
+```
+
+### Delete Assignment (Soft Delete)
+```http
+DELETE /api/class-courses/:id
+```
+
+---
+
+## 📝 Course Notes (Grades)
+
+**Access:** Teachers (assigned), Admin, Principal
+
+### List Notes
+```http
+GET /api/course-notes?student_id=1&class_id=1&course_id=2&semester=1&academic_year=2024-2025
+```
+
+### Get Student Notes
+```http
+GET /api/course-notes/student/:studentId?academic_year=2024-2025
+```
+
+### Create/Update Note (Upsert)
+```http
+POST /api/course-notes
+{
+  "student_id": 1,
+  "class_id": 1,
+  "course_id": 2,
+  "teacher_id": 3,
+  "academic_year": "2024-2025",
+  "semester": 1,
+  "partial1_score": 90,
+  "partial1_total": 100,
+  "partial2_score": 85,
+  "partial2_total": 100,
+  "final_score": 88,
+  "final_total": 100,
+  "semester_total": 263,
+  "comment": "Good performance"
+}
+```
+
+### Update Note by ID
+```http
+PUT /api/course-notes/:id
+{
+  "partial1_score": 95,
+  "semester_total": 268
+}
+```
+
+### Delete Note
+```http
+DELETE /api/course-notes/:id
+```
+
+---
+
+## 📋 Common Query Parameters
+
+- `page` - Page number (default: 1)
+- `limit` - Items per page (default: 10)
+- `search` - Search term (for name, email, code fields)
+- `is_active` - Filter by active status (`true`/`false`)
+- `active_only` - Return only active items (for dropdowns)
+- `show_all` - Include deleted items (default: `false`)
+
+---
+
+## ⚠️ Important Notes
 
 ### Soft Delete
-Delete operations perform soft deletes (set `is_active = false`) instead of hard deletes.
+- All DELETE operations are **soft deletes** (sets `is_active = false` and `deleted_at = NOW()`)
+- **Deleted records cannot be updated or reactivated** (returns 403 Forbidden)
+- Use `show_all=true` to see deleted records in lists
+- Use `active_only=true` for dropdowns/selection lists
 
----
+### Response Format
+```json
+{
+  "success": true,
+  "data": { ... },
+  "message": "Success message"
+}
+```
 
-## 🚫 Error Responses
-
-### 400 Bad Request
+### Error Format
 ```json
 {
   "success": false,
@@ -368,79 +417,28 @@ Delete operations perform soft deletes (set `is_active = false`) instead of hard
 }
 ```
 
-### 401 Unauthorized
-```json
-{
-  "success": false,
-  "error": "Not authorized to access this route"
-}
-```
-
-### 403 Forbidden
-```json
-{
-  "success": false,
-  "error": "User role 'teacher' is not authorized to access this route"
-}
-```
-
-### 404 Not Found
-```json
-{
-  "success": false,
-  "error": "Resource not found"
-}
-```
-
-### 500 Server Error
-```json
-{
-  "success": false,
-  "error": "Internal server error"
-}
-```
+### Status Codes
+- `200` - Success
+- `201` - Created
+- `400` - Bad Request (validation errors)
+- `401` - Unauthorized (missing/invalid token)
+- `403` - Forbidden (insufficient permissions or deleted record)
+- `404` - Not Found
+- `500` - Server Error
 
 ---
 
-## 📝 Notes
+## 🔒 Authorization Roles
 
-1. **All timestamps** are in ISO 8601 format
-2. **All dates** should be in YYYY-MM-DD format
-3. **Password hashing** is handled automatically on create/update
-4. **JWT tokens** expire after 7 days (configurable)
-5. **Soft deletes** preserve data integrity
-6. **Role-based access** is enforced on all endpoints
+- **admin** - Full access to all endpoints
+- **principal** - Read access + some write access
+- **teacher** - Limited access (own courses/notes)
 
 ---
 
-## 🧪 Testing with cURL
+## 📌 Special Behaviors
 
-### Login Example
-```bash
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"john.smith@futurschool.com","password":"password123"}'
-```
-
-### Get Employees (with token)
-```bash
-curl -X GET http://localhost:3000/api/employees \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE"
-```
-
-### Create Employee
-```bash
-curl -X POST http://localhost:3000/api/employees \
-  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "employee_code": "EMP007",
-    "first_name": "Test",
-    "last_name": "User",
-    "email": "test@futurschool.com",
-    "password": "password123",
-    "hire_date": "2024-01-01",
-    "role_id": 2
-  }'
-```
-
+1. **Employee Code**: Auto-generated as `EMP001`, `EMP002`, etc. if not provided
+2. **Course Notes**: Semester must be 1, 2, or 3
+3. **Class-Course Assignment**: Unique per `(class_id, course_id, academic_year)`
+4. **Deleted Records**: Cannot be updated (403 error)

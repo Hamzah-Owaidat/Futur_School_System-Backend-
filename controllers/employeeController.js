@@ -8,7 +8,7 @@ const { asyncHandler, sendSuccessResponse, sendErrorResponse } = require('../uti
  * @access  Private (Admin, Principal)
  */
 exports.getAllEmployees = asyncHandler(async (req, res, next) => {
-  const { page = 1, limit = 10, search = '', role_id = '', is_active = '' } = req.query;
+  const { page = 1, limit = 10, search = '', role_id = '', is_active = '', show_all = '' } = req.query;
   
   // Ensure proper integer conversion
   const pageNum = parseInt(page) || 1;
@@ -22,6 +22,12 @@ exports.getAllEmployees = asyncHandler(async (req, res, next) => {
     WHERE 1=1
   `;
   const params = [];
+
+  // Filter by deleted_at: show only non-deleted records by default
+  // If show_all=true, include deleted records too
+  if (show_all !== 'true') {
+    sql += ` AND e.deleted_at IS NULL`;
+  }
 
   if (search) {
     sql += ` AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_code LIKE ?)`;
@@ -51,6 +57,11 @@ exports.getAllEmployees = asyncHandler(async (req, res, next) => {
     WHERE 1=1
   `;
   const countParams = [];
+
+  // Apply same deleted_at filter to count query
+  if (show_all !== 'true') {
+    countSql += ` AND e.deleted_at IS NULL`;
+  }
 
   if (search) {
     countSql += ` AND (e.first_name LIKE ? OR e.last_name LIKE ? OR e.email LIKE ? OR e.employee_code LIKE ?)`;
@@ -282,10 +293,13 @@ exports.updateEmployee = asyncHandler(async (req, res, next) => {
     is_active
   } = req.body;
 
-  // Check if employee exists
-  const existing = await query('SELECT id FROM employees WHERE id = ?', [id]);
+  // Check if employee exists and is not soft deleted
+  const existing = await query('SELECT id, deleted_at FROM employees WHERE id = ?', [id]);
   if (existing.length === 0) {
     return sendErrorResponse(res, 404, 'Employee not found');
+  }
+  if (existing[0].deleted_at !== null) {
+    return sendErrorResponse(res, 403, 'Cannot update a deleted employee');
   }
 
   // Check if employee_code or email already exists (excluding current employee)
@@ -382,9 +396,9 @@ exports.deleteEmployee = asyncHandler(async (req, res, next) => {
     return sendErrorResponse(res, 404, 'Employee not found');
   }
 
-  // Soft delete (set is_active to false) instead of hard delete
+  // Soft delete (set is_active to false and deleted_at timestamp)
   await query(
-    'UPDATE employees SET is_active = FALSE, updated_by = ? WHERE id = ?',
+    'UPDATE employees SET is_active = FALSE, deleted_at = NOW(), updated_by = ? WHERE id = ?',
     [req.employee.id, id]
   );
 

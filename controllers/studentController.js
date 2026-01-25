@@ -7,7 +7,7 @@ const { asyncHandler, sendSuccessResponse, sendErrorResponse } = require('../uti
  * @access  Private
  */
 exports.getAllStudents = asyncHandler(async (req, res, next) => {
-  const { page = 1, limit = 10, search = '', class_id = '', is_active = '' } = req.query;
+  const { page = 1, limit = 10, search = '', class_id = '', is_active = '', show_all = '' } = req.query;
   
   // Ensure proper integer conversion
   const pageNum = parseInt(page) || 1;
@@ -24,6 +24,11 @@ exports.getAllStudents = asyncHandler(async (req, res, next) => {
     WHERE 1=1
   `;
   const params = [];
+
+  // Filter by deleted_at: show only non-deleted records by default
+  if (show_all !== 'true') {
+    sql += ` AND s.deleted_at IS NULL`;
+  }
 
   if (search) {
     sql += ` AND (s.first_name LIKE ? OR s.last_name LIKE ? OR s.email LIKE ? OR s.student_code LIKE ? OR s.parent_name LIKE ?)`;
@@ -49,6 +54,11 @@ exports.getAllStudents = asyncHandler(async (req, res, next) => {
   // Get total count
   let countSql = `SELECT COUNT(*) as total FROM students WHERE 1=1`;
   const countParams = [];
+
+  // Apply same deleted_at filter to count query
+  if (show_all !== 'true') {
+    countSql += ` AND deleted_at IS NULL`;
+  }
 
   if (search) {
     countSql += ` AND (first_name LIKE ? OR last_name LIKE ? OR email LIKE ? OR student_code LIKE ? OR parent_name LIKE ?)`;
@@ -215,10 +225,13 @@ exports.updateStudent = asyncHandler(async (req, res, next) => {
     is_active
   } = req.body;
 
-  // Check if student exists
-  const existing = await query('SELECT id FROM students WHERE id = ?', [id]);
+  // Check if student exists and is not soft deleted
+  const existing = await query('SELECT id, deleted_at FROM students WHERE id = ?', [id]);
   if (existing.length === 0) {
     return sendErrorResponse(res, 404, 'Student not found');
+  }
+  if (existing[0].deleted_at !== null) {
+    return sendErrorResponse(res, 403, 'Cannot update a deleted student');
   }
 
   // Check if student_code or email already exists (excluding current student)
@@ -307,9 +320,9 @@ exports.deleteStudent = asyncHandler(async (req, res, next) => {
     return sendErrorResponse(res, 404, 'Student not found');
   }
 
-  // Soft delete
+  // Soft delete (set is_active to false and deleted_at timestamp)
   await query(
-    'UPDATE students SET is_active = FALSE, updated_by = ? WHERE id = ?',
+    'UPDATE students SET is_active = FALSE, deleted_at = NOW(), updated_by = ? WHERE id = ?',
     [req.employee.id, id]
   );
 

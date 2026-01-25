@@ -7,16 +7,31 @@ const { asyncHandler, sendSuccessResponse, sendErrorResponse } = require('../uti
  * @access  Private (Admin)
  */
 exports.getAllRoles = asyncHandler(async (req, res, next) => {
-  const roles = await query(
-    `SELECT r.*, 
+  const { active_only = '', show_all = '' } = req.query;
+
+  let sql = `
+    SELECT r.*, 
             COUNT(DISTINCT e.id) as employee_count,
             COUNT(DISTINCT rp.permission_id) as permission_count
      FROM roles r
-     LEFT JOIN employees e ON r.id = e.role_id AND e.is_active = TRUE
+     LEFT JOIN employees e ON r.id = e.role_id AND e.is_active = TRUE AND e.deleted_at IS NULL
      LEFT JOIN role_permissions rp ON r.id = rp.role_id
-     GROUP BY r.id
-     ORDER BY r.name`
-  );
+     WHERE 1=1
+  `;
+
+  // Filter by deleted_at: show only non-deleted records by default
+  if (show_all !== 'true') {
+    sql += ` AND r.deleted_at IS NULL`;
+  }
+
+  // Filter by active status if active_only is requested (for dropdowns)
+  if (active_only === 'true') {
+    sql += ` AND r.is_active = TRUE`;
+  }
+
+  sql += ` GROUP BY r.id ORDER BY r.name`;
+
+  const roles = await query(sql);
 
   sendSuccessResponse(res, 200, { roles }, 'Roles retrieved successfully');
 });
@@ -138,10 +153,13 @@ exports.updateRole = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const { name, description, is_active, permission_ids } = req.body;
 
-  // Check if role exists
-  const existing = await query('SELECT id FROM roles WHERE id = ?', [id]);
+  // Check if role exists and is not soft deleted
+  const existing = await query('SELECT id, deleted_at FROM roles WHERE id = ?', [id]);
   if (existing.length === 0) {
     return sendErrorResponse(res, 404, 'Role not found');
+  }
+  if (existing[0].deleted_at !== null) {
+    return sendErrorResponse(res, 403, 'Cannot update a deleted role');
   }
 
   // Check if role name already exists (excluding current role)
@@ -237,9 +255,9 @@ exports.deleteRole = asyncHandler(async (req, res, next) => {
   // Delete role permissions first (CASCADE should handle this, but being explicit)
   await query('DELETE FROM role_permissions WHERE role_id = ?', [id]);
 
-  // Soft delete role
+  // Soft delete role (set is_active to false and deleted_at timestamp)
   await query(
-    'UPDATE roles SET is_active = FALSE, updated_by = ? WHERE id = ?',
+    'UPDATE roles SET is_active = FALSE, deleted_at = NOW(), updated_by = ? WHERE id = ?',
     [req.employee.id, id]
   );
 

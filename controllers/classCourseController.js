@@ -7,7 +7,7 @@ const { asyncHandler, sendSuccessResponse, sendErrorResponse } = require('../uti
  * @access  Private (Admin, Principal, Teacher)
  */
 exports.getClassCourses = asyncHandler(async (req, res, next) => {
-  const { class_id = '', course_id = '', teacher_id = '', academic_year = '', is_active = '' } =
+  const { class_id = '', course_id = '', teacher_id = '', academic_year = '', is_active = '', show_all = '' } =
     req.query;
 
   let sql = `
@@ -26,6 +26,11 @@ exports.getClassCourses = asyncHandler(async (req, res, next) => {
     WHERE 1=1
   `;
   const params = [];
+
+  // Filter by deleted_at: show only non-deleted records by default
+  if (show_all !== 'true') {
+    sql += ` AND cc.deleted_at IS NULL`;
+  }
 
   if (class_id) {
     sql += ` AND cc.class_id = ?`;
@@ -180,11 +185,15 @@ exports.updateClassCourse = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const { teacher_id, academic_year, is_active } = req.body;
 
-  const existing = await query('SELECT * FROM class_courses WHERE id = ?', [id]);
+  // Check if assignment exists and is not soft deleted
+  const existing = await query('SELECT *, deleted_at FROM class_courses WHERE id = ?', [id]);
   if (existing.length === 0) {
     return sendErrorResponse(res, 404, 'Assignment not found');
   }
   const current = existing[0];
+  if (current.deleted_at !== null) {
+    return sendErrorResponse(res, 403, 'Cannot update a deleted assignment');
+  }
 
   // Validate teacher if changed
   if (teacher_id) {
@@ -269,8 +278,9 @@ exports.deleteClassCourse = asyncHandler(async (req, res, next) => {
     return sendErrorResponse(res, 404, 'Assignment not found');
   }
 
+  // Soft delete (set is_active to false and deleted_at timestamp)
   await query(
-    'UPDATE class_courses SET is_active = FALSE, updated_by = ? WHERE id = ?',
+    'UPDATE class_courses SET is_active = FALSE, deleted_at = NOW(), updated_by = ? WHERE id = ?',
     [req.employee.id, id]
   );
 
